@@ -49,6 +49,7 @@
 #include <syscall.h>
 #include <test.h>
 #include <version.h>
+#include <file.h>
 #include "autoconf.h"  // for pseudoconfig
 
 
@@ -90,12 +91,11 @@ boot(void)
 	 * don't put new code before mainbus_bootstrap if you don't
 	 * absolutely have to.
 	 *
-	 * Also note that the buffer for this is only 1k. If you
+	 * Also note that the buffer for this is only 1k. If yo
 	 * overflow it, the system will crash without printing
 	 * anything at all. You can make it larger though (it's in
 	 * dev/generic/console.c).
 	 */
-
 	kprintf("\n");
 	kprintf("OS/161 base system version %s\n", BASE_VERSION);
 	kprintf("(with locks&CVs solution)\n");
@@ -139,6 +139,8 @@ boot(void)
 	 */
 	COMPILE_ASSERT(sizeof(userptr_t) == sizeof(char *));
 	COMPILE_ASSERT(sizeof(*(userptr_t)0) == sizeof(char));
+	init_open_file_table();
+	init_stdouterr();
 }
 
 /*
@@ -150,7 +152,6 @@ shutdown(void)
 {
 
 	kprintf("Shutting down.\n");
-
 	vfs_clearbootfs();
 	vfs_clearcurdir();
 	vfs_unmountall();

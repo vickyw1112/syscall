@@ -73,6 +73,10 @@ proc_create(const char *name)
 		return NULL;
 	}
 
+	for(int i = 0; i < OPEN_MAX; i++){
+		proc->fdt[i] = NULL;
+	}
+
 	proc->p_numthreads = 0;
 	spinlock_init(&proc->p_lock);
 

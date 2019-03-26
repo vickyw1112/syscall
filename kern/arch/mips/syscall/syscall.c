@@ -33,8 +33,9 @@
 #include <lib.h>
 #include <mips/trapframe.h>
 #include <thread.h>
-#include <current.h>
+#include <current.h> 
 #include <syscall.h>
+#include <file.h>
 
 
 /*
@@ -109,7 +110,9 @@ syscall(struct trapframe *tf)
 				 (userptr_t)tf->tf_a1);
 		break;
 
-	    /* Add stuff here */
+		case SYS_open:
+		err = sys_open((char *)tf->tf_a0, (int)tf->tf_a1, &retval);
+		break;
 
 	    default:
 		kprintf("Unknown syscall %d\n", callno);
