@@ -9,26 +9,47 @@
  * Contains some file-related maximum length constants
  */
 #include <limits.h>
-#include "types.h"
+#include <types.h>
 
-/* open file table entry defination*/
-struct oft_entry{
-    struct vnode *entry_vnode;
-    int entry_refcount; // pointed by how many fd
-    off_t entry_offset;
-    size_t fd_num;
-    struct lock *entry_lock;
+#define FILE_CLOSED -1
+
+// /* open file table entry defination*/
+// struct oft_entry{
+//     struct vnode *entry_vnode;
+//     int entry_refcount; // reference count of this open file
+//     off_t entry_offset;
+//     struct lock *entry_lock;
+// };
+
+
+/* per-process file descriptor table */
+struct fd_table{
+	int fd_entries[OPEN_MAX];	/* array of of_t entries */
 };
 
-/*
- * Put your function declarations and data types here ...
- */
+/* global open file table entry */
+struct open_file{
+	struct vnode *vnode;	/* the vnode this file represents */
+	int refcount;			/* the reference count of this file */
+	off_t offset;		/* read offset within the file */
+};
+
+/* global open file table */
+struct file_table{
+	struct lock *oft_lock;	/* open file table lock */
+	struct open_file *openfiles[OPEN_MAX];	/* array of open files */
+};
+
+/* global open file table */
+struct file_table *of_t;
+
+/* checks if a table exists for the current proc and creates one */
+int file_table_init(void);
+
+/* destroys the file table */
+void file_table_destroy(void);
 
 
-
-int init_stdouterr(void);
-int init_open_file_table(void);
-void destroy_open_file_table(void);
 int sys_open(char *filename, int flags, int32_t *retval);
 
 

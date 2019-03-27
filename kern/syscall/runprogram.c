@@ -59,6 +59,10 @@ runprogram(char *progname)
 	vaddr_t entrypoint, stackptr;
 	int result;
 
+	result =file_table_init();
+	if(result){
+		return result;
+	}
 	/* Open the file. */
 	result = vfs_open(progname, O_RDONLY, 0, &v);
 	if (result) {

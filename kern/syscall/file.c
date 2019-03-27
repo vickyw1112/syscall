@@ -16,50 +16,12 @@
 #include <copyinout.h>
 #include <proc.h>
 
-/*
- * Add your file-related functions here ...
- */
-struct oft_entry oft[OPEN_MAX];
-
-int init_open_file_table(void){
-    for(int i = 0; i < OPEN_MAX; i++){
-        oft[i].entry_vnode = NULL;
-        oft[i].fd_num = i;
-        oft[i].entry_refcount = 1;
-        oft[i].entry_offset = 0;
-        oft[i].entry_lock = lock_create("entry_lock");
-        if(oft[i].entry_lock == NULL){
-            lock_destroy(oft[i].entry_lock);
-            return ENOMEM;
-        }
-    }
-    return 0;
-}
-
-
-int init_stdouterr(void){
-    struct vnode *v1;
-    struct vnode *v2;
-    char c1[] = "con:";
-    char c2[] = "con:";
-    int r1 = 0; 
-    r1 = vfs_open(c1,O_WRONLY,0644,&v1); 
-    int r2 = 0;
-    r2 = vfs_open(c2,O_WRONLY,0644,&v2); 
-    oft[1].entry_vnode = v1;
-    oft[2].entry_vnode = v2;
-    if(r1 || r2){
-        return r1 | r2;
-    }
-    return 0; 
-} 
 
 int sys_open(char *filename, int flags, int32_t *retval){
     struct vnode *vn;
     char *path;
     int err;
     size_t *path_len;
-    int fd_temp = -1;
 
     path = kmalloc(PATH_MAX);
     path_len = kmalloc(sizeof(int));
@@ -70,13 +32,6 @@ int sys_open(char *filename, int flags, int32_t *retval){
         kfree(path_len);
         return err;
     }
-    for(int i = 0; i < OPEN_MAX; i++){
-        if(oft[i].entry_vnode == NULL){
-            fd_temp = i;
-            break;
-        }
-        return ENFILE;    
-    }
 
     err = vfs_open(path, flags, 0, &vn);
     kfree(path);
@@ -85,26 +40,107 @@ int sys_open(char *filename, int flags, int32_t *retval){
         return err;
     }
 
-    // store a reference of vnode
-    oft[fd_temp].entry_vnode = vn;
-    
-    // set append
-    if(flags & O_APPEND){
-        struct stat info;
-        off_t offset;
-        offset = VOP_STAT(oft[fd_temp].entry_vnode, &info);
-        if(offset)
-            return offset;
-        oft[fd_temp].entry_offset = info.st_size;
+    // get current fd table
+    struct fd_table *fd_t = curproc->fd_t;
+
+    // lock open file table for current proc
+    lock_acquire(of_t->oft_lock);
+    int fd_temp = -1;
+    int of_index = -1;
+
+    // find available spot in file descerptor in cur process fdt 
+    for(int i = 0; i < OPEN_MAX; i++){
+        if(fd_t->fd_entries[i] == FILE_CLOSED){
+            fd_temp = i;
+            break;
+        }
     }
+    // find available spot in open file table 
+    for (int i = 0; i < OPEN_MAX; i++){
+		if (of_t->openfiles[i] == NULL){
+			of_index = i;
+			break;
+		}
+	}
     
-    // update fdt
-    curproc->fdt[fd_temp] = &(oft[fd_temp]);
+    if(of_index == -1 || fd_temp == -1){
+        vfs_close(vn);
+        lock_release(of_t->oft_lock);
+		return EMFILE;
+    }
 
-    *retval = fd_temp;
+    // create new file record
+	struct open_file *of_entry = kmalloc(sizeof(struct open_file));
+	if (of_entry == NULL) {
+		vfs_close(vn);
+		lock_release(of_t->oft_lock);
+		return ENOMEM;
+	}
 
+    /* update fd table
+    fd_t: 
+    |a|b|c|d|e|
+     0 1 2 3 4  <--index 
+    of_t:
+    |f1|f2|f3|f4|f5|
+     a  b  c  d  e  <--index 
+    */
+	fd_t->fd_entries[fd_temp] = of_index;
+	
+	of_entry->vnode = vn;
+	of_entry->refcount = 1;	
+	of_entry->offset = 0;
+
+    // update global open file table
+	of_t->openfiles[of_index] = of_entry;
+    
+    // release lock for open file table
+	lock_release(of_t->oft_lock);
+
+	*retval = fd_temp;
     return 0;
 }
 
+
+/* this function is called when process run */
+int file_table_init(void){
+    int i, fd;
+
+    /* if there no open file table then create open file table */
+	if (of_t == NULL){
+		of_t = kmalloc(sizeof(struct file_table));
+		if (of_t == NULL){
+			return ENOMEM;
+		}
+
+		/* create lock for the open file table */
+		struct lock *oft_lock = lock_create("oft_lock");
+		if (oft_lock == NULL){
+			return ENOMEM;
+		}
+		of_t->oft_lock = oft_lock;
+
+		/* empty the table */
+		for (i = 0; i < OPEN_MAX; i++){
+			of_t->openfiles[i] = NULL;
+		}
+	}
+
+    /* create file descriptor table for each process */
+    curproc->fd_t = kmalloc(sizeof(struct fd_table));
+    if(curproc->fd_t == NULL){
+        return ENOMEM;
+    }
+
+    /* empty the new table */
+    for(fd = 0; fd < OPEN_MAX; fd++){
+        curproc->fd_t->fd_entries[fd] = FILE_CLOSED;
+    }
+	return 0;
+}
+
+/* destroy file table for cur process*/
+void file_table_destroy(void){
+}
 
 
