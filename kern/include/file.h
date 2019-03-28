@@ -15,6 +15,6 @@
  * Put your function declarations and data types here ...
  */
 
-
+int32_t syscall_read();
 
 #endif /* _FILE_H_ */
