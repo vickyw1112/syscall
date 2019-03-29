@@ -167,10 +167,11 @@ int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval){
     *retval = uio.uio_offset - of_table->openfiles[of_index]->offset;
     of_table->openfiles[of_index]->offset = uio.uio_offset;
     return 0;
-    
- 
+     
 }
-int sys_read(int fd, void *buf, size_t nbytes, int *retval){
+
+
+int sys_read(int fd, const void *buf, size_t nbytes, int *retval){
 	if(fd < 0 || fd >= OPEN_MAX) {
         return EBADF;
     }
@@ -195,8 +196,8 @@ int sys_read(int fd, void *buf, size_t nbytes, int *retval){
     	lock_release(of_table->oft_lock);
     	return err; 
     }  
-    int len = nbytes - uio.uio_resid;
-    kprintf("%d",len);
+    //int len = nbytes - uio.uio_resid;
+    //kprintf("length of file %d \n",len);
     lock_release(of_table->oft_lock);
     *retval = uio.uio_offset - of_table->openfiles[of_index]->offset;
     of_table->openfiles[of_index]->offset = uio.uio_offset;
