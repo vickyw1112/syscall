@@ -52,6 +52,6 @@ int sys_open(char *filename, int flags, mode_t mode, int32_t *retval);
 
 int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval);
 
-int sys_read(int fd, void *buf, size_t nbytes, int *retval);
+int sys_read(int fd, const void *buf, size_t nbytes, int *retval);
 
 #endif /* _FILE_H_ */
