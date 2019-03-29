@@ -139,6 +139,7 @@ boot(void)
 	 */
 	COMPILE_ASSERT(sizeof(userptr_t) == sizeof(char *));
 	COMPILE_ASSERT(sizeof(*(userptr_t)0) == sizeof(char));
+	open_file_table_init();
 }
 
 /*

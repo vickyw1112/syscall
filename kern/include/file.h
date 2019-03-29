@@ -41,16 +41,21 @@ struct file_table{
 };
 
 /* global open file table */
-struct file_table *of_t;
+struct file_table *of_table;
 
-/* checks if a table exists for the current proc and creates one */
-int file_table_init(void);
+/* init global open file table */
+int open_file_table_init(void);
+
+/* initiate fd_table for each proc */
+int fd_table_init(void);
 
 /* destroys the file table */
 void file_table_destroy(void);
 
 
-int sys_open(char *filename, int flags, int32_t *retval);
+int sys_open(char *filename, int flags, mode_t mode, int32_t *retval);
+
+int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval);
 
 
 #endif /* _FILE_H_ */

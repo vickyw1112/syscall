@@ -59,7 +59,7 @@ runprogram(char *progname)
 	vaddr_t entrypoint, stackptr;
 	int result;
 
-	result =file_table_init();
+	result =fd_table_init();
 	if(result){
 		return result;
 	}

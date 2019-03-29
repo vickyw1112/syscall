@@ -6,7 +6,6 @@
 #include <stdlib.h>
 #include <err.h>
 #include <errno.h>
-#include <file.h>
 
 #define MAX_BUF 500
 char teststr[] = "The quick brown fox jumped over the lazy dog.";
