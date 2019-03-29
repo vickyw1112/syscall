@@ -13,13 +13,6 @@
 
 #define FILE_CLOSED -1
 
-/* open file table entry defination*/
-struct oft_entry{
-    struct vnode *entry_vnode;
-    int entry_refcount; // reference count of this open file
-    off_t entry_offset;
-    struct lock *entry_lock;
-};
 
 /* global open file table entry */
 struct open_file{
@@ -43,14 +36,13 @@ int open_file_table_init(void);
 /* initiate fd_table for each proc */
 int fd_table_init(void);
 
-/* destroys the file table */
-void file_table_destroy(void);
-
 
 int sys_open(char *filename, int flags, mode_t mode, int32_t *retval);
 
 
 int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval);
+
+int sys_close(int fd);
 
 int sys_read(int fd, const void *buf, size_t nbytes, int *retval);
 
