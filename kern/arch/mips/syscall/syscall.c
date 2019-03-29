@@ -111,7 +111,10 @@ syscall(struct trapframe *tf)
 		err = sys___time((userptr_t)tf->tf_a0,
 				 (userptr_t)tf->tf_a1);
 		break;
-
+		
+		/*case SYS_read:
+		retval = syscall_read();
+		break;*/
 		case SYS_open:
 		// sanitise userland's data 
 		/* Copy the string from userspace to kernel space and check for valid address */
@@ -126,6 +129,11 @@ syscall(struct trapframe *tf)
 
 		case SYS_close:
 		err = sys_close((int)tf->tf_a0);
+		break;
+		
+		case SYS_write:
+		err = sys_write((int) tf->tf_a0, (void *) tf->tf_a1,
+				(size_t) tf->tf_a2, &retval);
 		break;
 
 	    default:

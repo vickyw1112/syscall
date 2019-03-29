@@ -132,7 +132,74 @@ int sys_close(int fd){
     }
     
     lock_release(of_table->oft_lock);
+    return 0;
+}
+
+
+int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval){
+	if(fd < 0 || fd >= OPEN_MAX) {
+        return EBADF;
+    }
     
+
+    struct vnode *vn;
+    int of_index = curproc->fd_table[fd];
+    if(of_index == FILE_CLOSED){
+    	return EBADF; 
+    }
+    lock_acquire(of_table->oft_lock);
+    vn = of_table->openfiles[of_index]->vnode; 
+    
+    struct iovec iovec; 
+    struct uio uio; 
+    
+    
+    uio_uinit(&iovec, &uio,(userptr_t)buf,nbytes,of_table->openfiles[of_index]->offset, UIO_WRITE);
+    
+    int err = VOP_WRITE(vn,&uio);
+    
+    if(err){
+    	lock_release(of_table->oft_lock);
+    	
+    	return err; 
+    }  
+    lock_release(of_table->oft_lock);
+    *retval = uio.uio_offset - of_table->openfiles[of_index]->offset;
+    of_table->openfiles[of_index]->offset = uio.uio_offset;
+    return 0;
+    
+ 
+}
+int sys_read(int fd, void *buf, size_t nbytes, int *retval){
+	if(fd < 0 || fd >= OPEN_MAX) {
+        return EBADF;
+    }
+    
+    struct vnode *vn;
+    int of_index = curproc->fd_table[fd];
+    if(of_index == FILE_CLOSED){
+    	return EBADF; 
+    }
+    lock_acquire(of_table->oft_lock);
+    vn = of_table->openfiles[of_index]->vnode; 
+    
+    struct iovec iovec; 
+    struct uio uio; 
+    
+    
+    uio_uinit(&iovec, &uio,(userptr_t)buf,nbytes,of_table->openfiles[of_index]->offset, UIO_READ);
+    
+    int err = VOP_READ(vn,&uio);
+    
+    if(err){
+    	lock_release(of_table->oft_lock);
+    	return err; 
+    }  
+    int len = nbytes - uio.uio_resid;
+    kprintf("%d",len);
+    lock_release(of_table->oft_lock);
+    *retval = uio.uio_offset - of_table->openfiles[of_index]->offset;
+    of_table->openfiles[of_index]->offset = uio.uio_offset;
     return 0;
 }
 
