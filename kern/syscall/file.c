@@ -34,12 +34,48 @@ ssize_t sys_read(int fd, void *buf, size_t nbytes, int* err) {
         *err = EFAULT;
         return -1;
     }
+    if(){
+    	*err = EBADF;
+    	return -1;
+    }
     
     
 
 
 }
 
+int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval){
+	if(fd < 0 || fd >= OPEN_MAX) {
+        return EBADF;
+    }
+    
+
+    struct vnode *vn;
+    int of_index = curproc->fd_table[fd];
+    if(of_index = FILE_CLOSED){
+    	return EBADF; 
+    }
+    lock_acquire(of_table->oft_lock);
+    vn = of_table[of_index]->vnode; 
+    
+    struct iovec iovec; 
+    struct uio uio; 
+    
+    
+    uio_uinit(&iovec, &uio,		(userptr_t)buf,nbytes,,of_table[of_index]->offset, UIO_WRITE);
+    
+    int err = VOP_WRITE(&vn,&uio);
+    
+    if(err){
+    	lock_release(of_table->oft_lock);
+    	
+    	return err; 
+    }  
+    lock_release(of_table->oft_lock);
+    *retval = 1;
+    return 0;
+    
  
+}
 
 
