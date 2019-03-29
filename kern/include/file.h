@@ -13,13 +13,13 @@
 
 #define FILE_CLOSED -1
 
-// /* open file table entry defination*/
-// struct oft_entry{
-//     struct vnode *entry_vnode;
-//     int entry_refcount; // reference count of this open file
-//     off_t entry_offset;
-//     struct lock *entry_lock;
-// };
+/* open file table entry defination*/
+struct oft_entry{
+    struct vnode *entry_vnode;
+    int entry_refcount; // reference count of this open file
+    off_t entry_offset;
+    struct lock *entry_lock;
+};
 
 
 /* per-process file descriptor table */
