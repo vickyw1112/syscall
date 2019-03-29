@@ -106,10 +106,35 @@ int sys_open(char *filename, int flags, mode_t mode, int32_t *retval){
     return 0;
 }
 
-int sys_write(int fd, userptr_t buf, size_t nbytes, int32_t nbytes){
+
+int sys_close(int fd){
+    if(fd < 0 || fd > OPEN_MAX)
+        return EBADF;
+    if(!lock_do_i_hold(of_table->oft_lock)){
+        lock_acquire(of_table->oft_lock);
+    }
+
+    int of_index = curproc->fd_table[fd];
+    if(of_index == FILE_CLOSED){
+        lock_release(of_table->oft_lock);
+        return EBADF;
+    }
+    struct open_file* open_file = of_table->openfiles[of_index];
+    
+    // cleaning fd_table 
+    curproc->fd_table[fd] = FILE_CLOSED;
+    
+    if(open_file->refcount == 1){
+        vfs_close(open_file->vnode);
+        of_table->openfiles[of_index] = NULL;
+    }else{
+        open_file->refcount = open_file->refcount - 1;
+    }
+    
+    lock_release(of_table->oft_lock);
+    
     return 0;
 }
-
 
 /* this function is called when process run */
 int fd_table_init(void){
@@ -126,10 +151,6 @@ int fd_table_init(void){
 	return 0;
 }
 
-// TODO
-/* destroy file table for cur process*/
-void file_table_destroy(void){
-}
 
 /* init global open file table */
 int open_file_table_init(void){

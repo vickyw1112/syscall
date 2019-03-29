@@ -36,6 +36,7 @@
 #include <current.h> 
 #include <syscall.h>
 #include <file.h>
+#include <copyinout.h>
 
 
 /*
@@ -82,6 +83,7 @@ syscall(struct trapframe *tf)
 	int callno;
 	int32_t retval;
 	int err;
+	char fn[PATH_MAX];
 
 	KASSERT(curthread != NULL);
 	KASSERT(curthread->t_curspl == 0);
@@ -112,21 +114,18 @@ syscall(struct trapframe *tf)
 
 		case SYS_open:
 		// sanitise userland's data 
-		char fn[PATH_MAX];
 		/* Copy the string from userspace to kernel space and check for valid address */
-		err = copyinstr((userptr_t)filename, fn, PATH_MAX, NULL);
+		err = copyinstr((userptr_t)tf->tf_a0, fn, PATH_MAX, NULL);
 		if (err){
-			return err;
+			break;
 		}
 		// handle syscall
 		err = sys_open((char *)tf->tf_a0, (int)tf->tf_a1, 
 				(mode_t)tf->tf_a2, &retval);
 		break;
 
-		case SYS_write:
-		if()
-		err = sys_write((int) tf->tf_a0, (userptr_t) tf->tf_a1,
-				(size_t) tf->tf_a2, &retval);
+		case SYS_close:
+		err = sys_close((int)tf->tf_a0);
 		break;
 
 	    default:
