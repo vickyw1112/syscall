@@ -21,12 +21,6 @@ struct oft_entry{
     struct lock *entry_lock;
 };
 
-
-/* per-process file descriptor table */
-struct fd_table{
-	int fd_entries[OPEN_MAX];	/* array of of_t entries */
-};
-
 /* global open file table entry */
 struct open_file{
 	struct vnode *vnode;	/* the vnode this file represents */
