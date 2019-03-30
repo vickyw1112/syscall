@@ -24,7 +24,7 @@ struct open_file{
 /* global open file table */
 struct file_table{
 	struct lock *oft_lock;	/* open file table lock */
-	struct open_file *openfiles[OPEN_MAX];	/* array of open files */
+	struct open_file *openfiles[OPEN_MAX];	/* array of open files pointer */
 };
 
 /* global open file table */
@@ -44,5 +44,8 @@ int sys_close(int fd);
 int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval);
 
 int sys_read(int fd, const void *buf, size_t nbytes, int *retval);
+
+int sys_lseek(int fd, off_t pos, int whence, off_t *retval64);
+
 
 #endif /* _FILE_H_ */

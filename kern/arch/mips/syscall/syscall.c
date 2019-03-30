@@ -37,6 +37,7 @@
 #include <syscall.h>
 #include <file.h>
 #include <copyinout.h>
+#include <endian.h>
 
 
 /*
@@ -84,6 +85,9 @@ syscall(struct trapframe *tf)
 	int32_t retval;
 	int err;
 	char fn[PATH_MAX];
+	uint64_t offset; /* unsigned 64bit val used for lseek offset */
+	int whence; /* whence value copys from user statck */
+	off_t retval64; 
 
 	KASSERT(curthread != NULL);
 	KASSERT(curthread->t_curspl == 0);
@@ -115,6 +119,7 @@ syscall(struct trapframe *tf)
 		case SYS_read:
 		err = sys_read((int)tf->tf_a0, (void *)tf->tf_a1,(size_t)tf->tf_a2, &retval);
 		break;
+		
 		case SYS_open:
 		// sanitise userland's data 
 		/* Copy the string from userspace to kernel space and check for valid address */
@@ -136,6 +141,12 @@ syscall(struct trapframe *tf)
 				(size_t) tf->tf_a2, &retval);
 		break;
 
+		case SYS_lseek:
+		join32to64(tf->tf_a2, tf->tf_a3, &offset);
+		copyin((userptr_t)tf->tf_sp + 16, &whence, sizeof(int));
+		err = sys_lseek((int)tf->tf_a0, (off_t)offset, whence, &retval64);
+		break;
+
 	    default:
 		kprintf("Unknown syscall %d\n", callno);
 		err = ENOSYS;
@@ -154,7 +165,11 @@ syscall(struct trapframe *tf)
 	}
 	else {
 		/* Success. */
-		tf->tf_v0 = retval;
+		if(callno == SYS_lseek)
+			split64to32(retval64, &tf->tf_v0, &tf->tf_v1);
+		
+		else
+			tf->tf_v0 = retval;
 		tf->tf_a3 = 0;      /* signal no error */
 	}
 

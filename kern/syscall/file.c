@@ -108,11 +108,10 @@ int sys_open(char *filename, int flags, mode_t mode, int32_t *retval){
 
 
 int sys_close(int fd){
-    if(fd < 0 || fd > OPEN_MAX)
+    if(fd < 0 || fd >= OPEN_MAX)
         return EBADF;
-    if(!lock_do_i_hold(of_table->oft_lock)){
-        lock_acquire(of_table->oft_lock);
-    }
+   
+    lock_acquire(of_table->oft_lock);
 
     int of_index = curproc->fd_table[fd];
     if(of_index == FILE_CLOSED){
@@ -163,9 +162,9 @@ int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval){
     	
     	return err; 
     }  
-    lock_release(of_table->oft_lock);
     *retval = uio.uio_offset - of_table->openfiles[of_index]->offset;
     of_table->openfiles[of_index]->offset = uio.uio_offset;
+    lock_release(of_table->oft_lock);
     return 0;
      
 }
@@ -198,9 +197,67 @@ int sys_read(int fd, const void *buf, size_t nbytes, int *retval){
     }  
     //int len = nbytes - uio.uio_resid;
     //kprintf("length of file %d \n",len);
-    lock_release(of_table->oft_lock);
     *retval = uio.uio_offset - of_table->openfiles[of_index]->offset;
     of_table->openfiles[of_index]->offset = uio.uio_offset;
+    lock_release(of_table->oft_lock);
+    return 0;
+}
+
+
+int sys_lseek(int fd, off_t pos, int whence, off_t *retval64){
+    int err;
+
+    if(fd < 0 || fd >= OPEN_MAX){
+        return EBADF;
+    }
+    if(whence != SEEK_CUR && whence != SEEK_END && whence != SEEK_SET){
+        return EINVAL;
+    }
+    int of_index = curproc->fd_table[fd];
+    if(of_index == FILE_CLOSED){
+        return EBADF;
+    }
+
+    // lock global open file table
+    lock_acquire(of_table->oft_lock);
+    
+    struct open_file *open_file = of_table->openfiles[of_index];
+    
+    if(!VOP_ISSEEKABLE(open_file->vnode)){
+        lock_release(of_table->oft_lock);
+        return ESPIPE;
+    }
+    struct stat s;
+    off_t original = open_file->offset;
+    switch(whence){
+        case SEEK_SET:
+        open_file->offset = pos;
+        break; 
+
+        case SEEK_CUR:
+        open_file->offset = pos + open_file->offset;
+        break;
+
+        case SEEK_END:
+        err = VOP_STAT(open_file->vnode, &s);
+        if(err){
+            lock_release(of_table->oft_lock);
+            return err;
+        }
+        open_file->offset = pos + s.st_size;
+        break;
+    }
+
+    // if offset < 0 after seek
+    // restore it to previous offset
+    if(open_file->offset < 0){
+        open_file->offset = original;
+        lock_release(of_table->oft_lock);
+        return EINVAL;
+    }
+
+    *retval64 = open_file->offset;
+    lock_release(of_table->oft_lock);
     return 0;
 }
 
