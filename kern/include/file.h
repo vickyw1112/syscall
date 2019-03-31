@@ -41,6 +41,8 @@ int sys_open(char *filename, int flags, mode_t mode, int32_t *retval);
 
 int sys_close(int fd);
 
+int sys_dup2(int oldfd, int newfd, int *retval);
+
 int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval);
 
 int sys_read(int fd, const void *buf, size_t nbytes, int *retval);
