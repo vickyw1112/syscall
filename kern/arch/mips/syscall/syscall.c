@@ -140,6 +140,12 @@ syscall(struct trapframe *tf)
 		err = sys_write((int) tf->tf_a0, (void *) tf->tf_a1,
 				(size_t) tf->tf_a2, &retval);
 		break;
+		case SYS_dup2:
+		err = sys_dup2(
+				tf->tf_a0,tf->tf_a1, & retval 
+			);
+		break;
+
 
 		case SYS_lseek:
 		join32to64(tf->tf_a2, tf->tf_a3, &offset);

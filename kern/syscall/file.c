@@ -134,9 +134,42 @@ int sys_close(int fd){
     return 0;
 }
 
+//duplicates an old file handle to a new one 
+//
+int sys_dup2(int oldfd, int newfd, int *retval){
+	
+	if(oldfd < 0 || oldfd >= __OPEN_MAX ||
+        newfd < 0 || newfd >= __OPEN_MAX){
+        return EBADF;
+    }
+    
+    if(oldfd==newfd){
+    	*retval = newfd;
+        return 0;
+    }
+    int old_of_index = curproc->fd_table[oldfd];
+    if(old_of_index == FILE_CLOSED){
+    	return EBADF; 
+    }
+    
+    if(of_table->openfiles[oldfd]==NULL){
+    	return EBADF;
+    }
+    
+    //lock_acquire(of_table->oft_lock);
+    
+    curproc->fd_table[newfd] =curproc->fd_table[oldfd];
+    
+    of_table->openfiles[old_of_index]->refcount++;
+    
+    //lock_release(of_table->oft_lock);
+    //*retval = 0;
+    *retval = newfd;
+    return 0;
+}
 
 int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval){
-	if(fd < 0 || fd >= OPEN_MAX) {
+    if(fd < 0 || fd >= OPEN_MAX) {
         return EBADF;
     }
     
@@ -262,6 +295,7 @@ int sys_lseek(int fd, off_t pos, int whence, off_t *retval64){
 }
 
 /* this function is called when process run */
+
 int fd_table_init(void){
     int fd;
     /* empty the new table */
