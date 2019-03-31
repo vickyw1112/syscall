@@ -156,13 +156,13 @@ int sys_dup2(int oldfd, int newfd, int *retval){
     	return EBADF;
     }
     
-    //lock_acquire(of_table->oft_lock);
     
     curproc->fd_table[newfd] =curproc->fd_table[oldfd];
     
+    lock_acquire(of_table->oft_lock);
     of_table->openfiles[old_of_index]->refcount++;
     
-    //lock_release(of_table->oft_lock);
+    lock_release(of_table->oft_lock);
     //*retval = 0;
     *retval = newfd;
     return 0;
