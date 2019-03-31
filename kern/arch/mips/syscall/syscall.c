@@ -136,7 +136,7 @@ syscall(struct trapframe *tf)
 				(size_t) tf->tf_a2, &retval);
 		break;
 		case SYS_dup2:
-		err = sys__dup2(
+		err = sys_dup2(
 				tf->tf_a0,tf->tf_a1, & retval 
 			);
 		break;
