@@ -19,6 +19,7 @@ struct open_file{
 	struct vnode *vnode;	/* the vnode this file represents */
 	int refcount;			/* the reference count of this file */
 	off_t offset;		/* read offset within the file */
+	int accmode;       /* access mode for cur open file*/
 };
 
 /* global open file table */

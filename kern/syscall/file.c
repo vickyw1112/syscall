@@ -95,6 +95,7 @@ int sys_open(char *filename, int flags, mode_t mode, int32_t *retval){
 	of_entry->vnode = vn;
 	of_entry->refcount = 1;	
 	of_entry->offset = 0;
+    of_entry->accmode = flags;
 
     // update global open file table
 	of_table->openfiles[of_index] = of_entry;
@@ -106,11 +107,11 @@ int sys_open(char *filename, int flags, mode_t mode, int32_t *retval){
     return 0;
 }
 
-
+/* dup2 may call this function */
 int sys_close(int fd){
     if(fd < 0 || fd >= OPEN_MAX)
         return EBADF;
-   
+    
     lock_acquire(of_table->oft_lock);
 
     int of_index = curproc->fd_table[fd];
@@ -122,14 +123,16 @@ int sys_close(int fd){
     
     // cleaning fd_table 
     curproc->fd_table[fd] = FILE_CLOSED;
-    
+
+    /* this is the last reference to the file */ 
     if(open_file->refcount == 1){
         vfs_close(open_file->vnode);
+        kfree(open_file);
         of_table->openfiles[of_index] = NULL;
     }else{
         open_file->refcount = open_file->refcount - 1;
     }
-    
+
     lock_release(of_table->oft_lock);
     return 0;
 }
@@ -138,32 +141,37 @@ int sys_close(int fd){
 //
 int sys_dup2(int oldfd, int newfd, int *retval){
 	
-	if(oldfd < 0 || oldfd >= __OPEN_MAX ||
-        newfd < 0 || newfd >= __OPEN_MAX){
+	if(oldfd < 0 || oldfd >= OPEN_MAX ||
+        newfd < 0 || newfd >= OPEN_MAX){
         return EBADF;
     }
-    
+    /* if both fd are the same, return */ 
     if(oldfd==newfd){
     	*retval = newfd;
         return 0;
     }
+
+    /* get the old and new oft index */
     int old_of_index = curproc->fd_table[oldfd];
     if(old_of_index == FILE_CLOSED){
     	return EBADF; 
     }
     
-    if(of_table->openfiles[oldfd]==NULL){
-    	return EBADF;
+    
+
+    /* if newfd is currently open, close it */
+    if(newfd != FILE_CLOSED){
+        sys_close(newfd);
     }
-    
-    
-    curproc->fd_table[newfd] =curproc->fd_table[oldfd];
-    
+
     lock_acquire(of_table->oft_lock);
+    
+    /* assign new open file table reference to new fd */
     of_table->openfiles[old_of_index]->refcount++;
     
     lock_release(of_table->oft_lock);
-    //*retval = 0;
+    
+    curproc->fd_table[newfd] = curproc->fd_table[oldfd];
     *retval = newfd;
     return 0;
 }
@@ -180,6 +188,11 @@ int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval){
     	return EBADF; 
     }
     lock_acquire(of_table->oft_lock);
+    /* see if the fd can be write */
+    if((of_table->openfiles[of_index]->accmode & O_ACCMODE) == O_RDONLY){
+        lock_release(of_table->oft_lock);
+        return EBADF;
+    }
     vn = of_table->openfiles[of_index]->vnode; 
     
     struct iovec iovec; 
@@ -194,8 +207,10 @@ int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval){
     	lock_release(of_table->oft_lock);
     	
     	return err; 
-    }  
+    } 
+    /* set the amount of bytes write */ 
     *retval = uio.uio_offset - of_table->openfiles[of_index]->offset;
+    /* update offset */
     of_table->openfiles[of_index]->offset = uio.uio_offset;
     lock_release(of_table->oft_lock);
     return 0;
@@ -213,7 +228,14 @@ int sys_read(int fd, const void *buf, size_t nbytes, int *retval){
     if(of_index == FILE_CLOSED){
     	return EBADF; 
     }
+   
     lock_acquire(of_table->oft_lock);
+    /* see if the fd can be read */ 
+    if((of_table->openfiles[of_index]->accmode & O_ACCMODE) == O_WRONLY){
+        lock_release(of_table->oft_lock);
+        return EBADF;
+    }
+    /* get open file vnode for reading */ 
     vn = of_table->openfiles[of_index]->vnode; 
     
     struct iovec iovec; 
@@ -228,9 +250,10 @@ int sys_read(int fd, const void *buf, size_t nbytes, int *retval){
     	lock_release(of_table->oft_lock);
     	return err; 
     }  
-    //int len = nbytes - uio.uio_resid;
-    //kprintf("length of file %d \n",len);
+    /* set the amount of bytes read */
     *retval = uio.uio_offset - of_table->openfiles[of_index]->offset;
+
+    /* update offset */
     of_table->openfiles[of_index]->offset = uio.uio_offset;
     lock_release(of_table->oft_lock);
     return 0;

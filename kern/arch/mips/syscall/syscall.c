@@ -128,8 +128,7 @@ syscall(struct trapframe *tf)
 			break;
 		}
 		// handle syscall
-		err = sys_open((char *)tf->tf_a0, (int)tf->tf_a1, 
-				(mode_t)tf->tf_a2, &retval);
+		err = sys_open(fn, (int)tf->tf_a1, (mode_t)tf->tf_a2, &retval);
 		break;
 
 		case SYS_close:
