@@ -157,8 +157,6 @@ int sys_dup2(int oldfd, int newfd, int *retval){
     	return EBADF; 
     }
     
-    
-
     /* if newfd is currently open, close it */
     if(newfd != FILE_CLOSED){
         sys_close(newfd);
