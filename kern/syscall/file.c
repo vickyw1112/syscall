@@ -138,7 +138,6 @@ int sys_close(int fd){
 }
 
 //duplicates an old file handle to a new one 
-//
 int sys_dup2(int oldfd, int newfd, int *retval){
 	
 	if(oldfd < 0 || oldfd >= OPEN_MAX ||
@@ -164,11 +163,11 @@ int sys_dup2(int oldfd, int newfd, int *retval){
 
     lock_acquire(of_table->oft_lock);
     
-    /* assign new open file table reference to new fd */
     of_table->openfiles[old_of_index]->refcount++;
     
     lock_release(of_table->oft_lock);
     
+    /* assign new open file table reference to new fd */
     curproc->fd_table[newfd] = curproc->fd_table[oldfd];
     *retval = newfd;
     return 0;
@@ -186,7 +185,7 @@ int sys_write(int fd, const void *buf, size_t nbytes, int32_t *retval){
     	return EBADF; 
     }
     lock_acquire(of_table->oft_lock);
-    /* see if the fd can be write */
+    /* see if the fd can write */
     if((of_table->openfiles[of_index]->accmode & O_ACCMODE) == O_RDONLY){
         lock_release(of_table->oft_lock);
         return EBADF;
@@ -228,7 +227,7 @@ int sys_read(int fd, const void *buf, size_t nbytes, int *retval){
     }
    
     lock_acquire(of_table->oft_lock);
-    /* see if the fd can be read */ 
+    /* see if the fd can read */ 
     if((of_table->openfiles[of_index]->accmode & O_ACCMODE) == O_WRONLY){
         lock_release(of_table->oft_lock);
         return EBADF;
